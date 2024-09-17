@@ -5,37 +5,34 @@
 //#define DEBUG_TIME
 //#define DEBUG_DATA
 
-#define ENABLE_KEYBOARD
-//#define ENABLE_NS_JOYSTICK
-
 //#define HAS_BUTTONS
 
 #include <Keyboard.h>
 
 typedef enum mode_t {
   MODE_KEYBOARD = 0,
-  MODE_JOYSTICK = 1
+  MODE_NINTENDO_SWITCH = 1
 } mode_t;
-const mode_t mode = 0; // 0: Keyboard, 1: Joystick
+const mode_t mode = MODE_KEYBOARD;
 
-/* #ifdef ENABLE_NS_JOYSTICK */
 #include "Joystick.h"
 const int led_pin[4] = {8, 9, 10, 11};
 const int sensor_button[4] = {SWITCH_BTN_ZL, SWITCH_BTN_LCLICK, SWITCH_BTN_RCLICK, SWITCH_BTN_ZR};
-/* #endif */
 
 #ifdef HAS_BUTTONS
+
 int button_state[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int button_cd[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-/* #ifdef ENABLE_KEYBOARD */
+
+// Keyboard buttons
 const int button_key[16] = {
   KEY_UP_ARROW, KEY_RIGHT_ARROW, KEY_DOWN_ARROW, KEY_LEFT_ARROW,
   'k', 'j', 'f', 'd',
   KEY_PAGE_DOWN, KEY_PAGE_UP, KEY_ESC, ' ',
   KEY_F1, 'q', 0 /*Fn1*/, 0 /*Fn2*/
 };
-/* #endif */
-/* #ifdef ENABLE_NS_JOYSTICK */
+
+// Nintendo Switch buttons
 const int button[16] = {
   0 /*SWITCH_HAT_U*/, 0 /*SWITCH_HAT_R*/, 0 /*SWITCH_HAT_D*/, 0 /*SWITCH_HAT_L*/,
   SWITCH_BTN_X, SWITCH_BTN_A, SWITCH_BTN_B, SWITCH_BTN_Y,
@@ -48,7 +45,7 @@ const int hat_mapping[16] = {
   SWITCH_HAT_L, SWITCH_HAT_UL, SWITCH_HAT_CENTER, SWITCH_HAT_U,
   SWITCH_HAT_DL, SWITCH_HAT_L, SWITCH_HAT_D, SWITCH_HAT_CENTER,
 };
-/* #endif */
+
 #endif
 
 const int min_threshold = 15;
@@ -72,9 +69,9 @@ int raw[4] = {0, 0, 0, 0};
 float level[4] = {0, 0, 0, 0};
 long cd[4] = {0, 0, 0, 0};
 bool down[4] = {false, false, false, false};
-/* #ifdef ENABLE_NS_JOYSTICK */
+
+// Nintendo Switch Joystick
 uint8_t down_count[4] = {0, 0, 0, 0};
-/* #endif */
 
 typedef unsigned long time_t;
 time_t t0 = 0;
@@ -102,17 +99,15 @@ void setup() {
   analogSwitchPin(pin[0]);
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
-/* #ifdef ENABLE_NS_JOYSTICK */
-  if (mode == MODE_JOYSTICK) {
+
+  if (mode == MODE_NINTENDO_SWITCH) {
     for (int i = 0; i < 8; ++i) pinMode(i, INPUT_PULLUP);
     for (int i = 0; i < 4; ++i) {  digitalWrite(led_pin[i], HIGH); pinMode(led_pin[i], OUTPUT); }
   }
-/* #endif */
-/* #ifdef ENABLE_KEYBOARD */
-  if (mode == MODE_KEYBOARD) {
+  else if (mode == MODE_KEYBOARD) {
     Keyboard.begin();
   }
-/* #endif */
+
   t0 = micros();
   Serial.begin(9600);
 }
@@ -183,11 +178,9 @@ void loop() {
 
   static int si = 0;
 
-/* #ifdef ENABLE_KEYBOARD */
   if (mode == MODE_KEYBOARD) {
     parseSerial();
   }
-/* #endif */
 
   time_t t1 = micros();
   dt = t1 - t0;
@@ -207,11 +200,9 @@ void loop() {
       if (cd[i] <= 0) {
         cd[i] = 0;
         if (down[i]) {
-/* #ifdef ENABLE_KEYBOARD */
           if (mode == MODE_KEYBOARD) {
             Keyboard.release(stageresult ? KEY_ESC : key[i]);
           }
-/* #endif */
           down[i] = false;
         }
       }
@@ -241,7 +232,7 @@ void loop() {
         Serial.print(level[3], 1);
         Serial.print("\n");
 #endif
-/* #ifdef ENABLE_KEYBOARD */
+
         if (mode == MODE_KEYBOARD) {
           if (stageresult) {
             Keyboard.press(KEY_ESC);
@@ -249,22 +240,20 @@ void loop() {
             Keyboard.press(key[i_max]);
           }
         }
-/* #endif */
         down[i_max] = true;
-/* #ifdef ENABLE_NS_JOYSTICK */
-        if (mode == MODE_JOYSTICK) {
+
+        if (mode == MODE_NINTENDO_SWITCH) {
           if (down_count[i_max] <= 2) down_count[i_max] += 2;
         }
-/* #endif */
       }
+
       for (int i = 0; i != 4; ++i)
         cd[i] = cd_length;
-/* #ifdef ENABLE_KEYBOARD */
+
       if (mode == MODE_KEYBOARD) {
         if (stageselect)
           cd[i_max] = cd_stageselect;
       }
-/* #endif */
     }
     sdt = 0;
   }
@@ -299,7 +288,7 @@ void loop() {
     if (state != bs[i] && bc[i] == 0) {
       bs[i] = state;
       bc[i] = 15000;
-/* #ifdef ENABLE_KEYBOARD */
+
       if (mode == MODE_KEYBOARD) {
         if (state) {
           Keyboard.press(button_key[(bi << 2) + i]);
@@ -307,17 +296,15 @@ void loop() {
           Keyboard.release(button_key[(bi << 2) + i]);
         }
       }
-/* #endif */
     }
-/* #ifdef ENABLE_NS_JOYSTICK */
-    if (mode == MODE_JOYSTICK) {
+
+    if (mode == MODE_NINTENDO_SWITCH) {
       Joystick.Button |= (bs[i] ? button[(bi << 2) + i] : SWITCH_BTN_NONE);
     }
-/* #endif */
   }
 #endif
 
-  if (mode == MODE_JOYSTICK)
+  if (mode == MODE_NINTENDO_SWITCH)
   {
     if (ct > 32000 || (ct > 8000 && (down_count[0] || down_count[1] || down_count[2] || down_count[3]))) {
       for (int i = 0; i < 4; ++i) { // Sensors
