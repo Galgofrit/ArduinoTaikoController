@@ -11,6 +11,7 @@
 
 #include <Keyboard.h>
 #include <EEPROM.h>
+#include <avr/wdt.h>
 
 typedef enum mode_t {
   MODE_KEYBOARD = 0,
