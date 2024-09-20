@@ -1,4 +1,5 @@
 #include "AnalogReadNow.h"
+#include "Joystick.h"
 
 //#define DEBUG_OUTPUT
 //#define DEBUG_OUTPUT_LIVE
@@ -6,16 +7,17 @@
 //#define DEBUG_DATA
 
 //#define HAS_BUTTONS
+#define DEBUG
 
 #include <Keyboard.h>
+#include <EEPROM.h>
 
 typedef enum mode_t {
   MODE_KEYBOARD = 0,
   MODE_NINTENDO_SWITCH = 1
 } mode_t;
-const mode_t mode = MODE_KEYBOARD;
+mode_t mode = MODE_KEYBOARD;
 
-#include "Joystick.h"
 const int led_pin[4] = {8, 9, 10, 11};
 const int sensor_button[4] = {SWITCH_BTN_ZL, SWITCH_BTN_LCLICK, SWITCH_BTN_RCLICK, SWITCH_BTN_ZR};
 
@@ -119,6 +121,18 @@ void configure_mode() {
   #endif
 }
 
+void handle_mode_switch() {
+  int pc_status = digitalRead(0);
+  int ns_status = digitalRead(1);
+
+  if ((ns_status == LOW && pc_status == HIGH && mode == 0)
+   || (pc_status == LOW && ns_status == HIGH && mode == 1)) {
+    // Reset
+    wdt_enable(WDTO_15MS); // Set watchdog timer to reset after 15 ms
+    while (1) {} // Wait for the watchdog timer to reset
+  }
+}
+
 void setup() {
   #ifdef DEBUG
   Serial.begin(9600);
@@ -205,7 +219,7 @@ void loop_test2() {
 }
 
 void loop() {
-  //loop_test2(); return;
+  handle_mode_switch();
 
   static int si = 0;
 
