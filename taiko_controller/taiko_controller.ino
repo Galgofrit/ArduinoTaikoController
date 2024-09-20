@@ -94,7 +94,38 @@ void sampleSingle(int i) {
   analogSwitchPin(pin[key_next[i]]);
 }
 
+void configure_mode() {
+  pinMode(0, INPUT_PULLUP);
+  pinMode(1, INPUT_PULLUP);
+  int pc_status = digitalRead(0);
+  int ns_status = digitalRead(1);
+
+  if (ns_status == LOW && pc_status == HIGH) {
+    mode = MODE_NINTENDO_SWITCH;
+    EEPROM.write(0, 1);
+  } else if (pc_status == LOW && ns_status == HIGH) {
+    mode = MODE_KEYBOARD;
+    EEPROM.write(0, 0);
+  } else {
+    mode = EEPROM.read(0);
+  }
+
+  #ifdef DEBUG
+  if (mode == MODE_NINTENDO_SWITCH) {
+    Serial.println("start with NS mode");
+  } else if(mode == MODE_KEYBOARD) {
+    Serial.println("start with PC mode");
+  }
+  #endif
+}
+
 void setup() {
+  #ifdef DEBUG
+  Serial.begin(9600);
+  delay(1000);
+  #endif
+  configure_mode();
+
   analogReference(DEFAULT);
   analogSwitchPin(pin[0]);
   pinMode(LED_BUILTIN, OUTPUT);
